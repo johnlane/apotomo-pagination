@@ -44,3 +44,4 @@ end
 # Use debugger
 # gem 'debugger', group: [:development, :test]
 gem 'apotomo', '1.2.4'
+gem 'will_paginate', '~> 3.0'

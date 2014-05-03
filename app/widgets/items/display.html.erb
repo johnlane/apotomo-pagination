@@ -2,4 +2,7 @@
   <% for item in children do %>
     <%= render_widget item %>
   <% end %>
+
+  <%= paginate page: page, pages: pages %>
+
 <% end %>

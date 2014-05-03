@@ -111,18 +111,54 @@ Change `app/widgets/items/display.html.erb` also:
 Now, re-running the application gives an error:
 
 
-    Started GET "/" for 127.0.0.1 at 2014-05-02 17:31:37 +0100
-    ActiveRecord::SchemaMigration Load (0.1ms)  SELECT "schema_migrations".* FROM "schema_migrations"
-    Processing by ItemsController#index as HTML
-      Rendered items/index.html.erb within layouts/application (6.0ms)
-    Completed 500 Internal Server Error in 14ms
+    undefined method `total_pages' for #<ActiveSupport::SafeBuffer:0x007f644825b378>
 
-    ActionView::Template::Error (wrong number of arguments (0 for 1)):
-        1: <%= render_widget :items %>
-      app/widgets/items_widget.rb:4:in `display'
-      app/views/items/index.html.erb:1:in `_app_views_items_index_html_erb___911052419021587489_29390760'
+This happens because the `will_paginate` helper used in the view expects a *paginated collection* and `render_widget item` doesn't return a paginated collection. 
+
+The job of the `will_paginate` helper is to generate the HTML for the pagination links, so one solution is to do that manually and this makes sense if the HTML that `will_paginage` would produce isn't suitable, which would be the case if the output needs to consider other layout or styling (e.g. [Twitter Bootstrap](http://getbootstrap.com)).
+
+What follows is one way to implement pagination of widgets using Twitter Bootstrap's [paginator](http://getbootstrap.com/components/#pagination-default).
+
+The first thing to do is to pass the current page and the number of pages to the view. Amend `app/widgets/items_widget.rb`:
+
+    def display
+      items = Item.all.paginate(page: params[:page], per_page: 10)
+      items.each { |i| self << widget('items/item', i.id, item: i) }
+      render locals: { page: params[:page], pages: items.total_pages }
+    end
+
+Next, have the view, `app/widgets/items/display.html.erb`, use that information to invoke a new `paginate` helper beneath the widgets:
+
+    <%= paginate page: page, pages: pages %>
+
+And, finally, write the helper in `app/widgets/items_widget.rb`:
+
+    private
+    def paginate(args)
+      page = args[:page] ? args[:page].to_i : 1 
+      pages = args[:pages] ? args[:pages].to_i : 1 
+
+      first_css = %{class="disabled"} if page == 1
+      last_css  = %{class="disabled"} if page == pages
+
+      links = %{<ul class="pagination">\n}
+      links << %{  <li #{first_css}><a href="#{url_for}">&laquo;</a></li>\n}
+      1.upto pages do |p| 
+        current_css = %{class="active"} if p == page
+        links << %{  <li #{current_css}><a href="#{url_for(params.merge({page: p}))}">#{p}</a></li>\n}
+      end 
+      links << %{  <li #{last_css}><a href="#{url_for}?page=#{pages}">&raquo;</a></li>\n}
+      links << %{</ul>\n}
+
+      links.html_safe
+
+    end 
+    helper_method :paginate
+
+This example produces HTML that works with Twitter Bootstrap. Anything could be substituted - the key point is the output is based on the current page and the number of pages.
 
 <small>commit to git again</small>
 
+See https://github.com/johnlane/apotomo-pagination
 
-
+<small>Final note: the `paginate` helper is a private method of the `Items` widget. In a real application with multiple widgets that may need to use pagination, it may be better to put this in an [`ApplicationWidget`](https://gist.github.com/ramontayag/1101138).</small>

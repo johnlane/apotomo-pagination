@@ -2,9 +2,7 @@ class ItemsWidget < Apotomo::Widget
 
   def display
     items = Item.all.paginate(page: params[:page], per_page: 10)
-    items.each do |i|
-      self << widget('items/item', i, item: i)
-    end
+    items.each { |i| self << widget('items/item', i, item: i) }
     render locals: { page: params[:page], pages: items.total_pages }
   end
 

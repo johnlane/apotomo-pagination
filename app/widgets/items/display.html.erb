@@ -1,5 +1,5 @@
 <%= widget_div do %>
   <% for item in children do %>
-    <%= will_paginate render_widget(item) %>
+    <%= render_widget item %>
   <% end %>
 <% end %>
